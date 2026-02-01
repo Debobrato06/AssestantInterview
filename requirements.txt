@@ -1,0 +1,17 @@
+PyQt6
+openai
+python-dotenv
+speechrecognition
+pyaudio
+whisper
+torch
+numpy
+sounddevice
+keyboard
+google-generativeai
+google-genai
+fastapi
+uvicorn
+python-multipart
+ollama
+anyio

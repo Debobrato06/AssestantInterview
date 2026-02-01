@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interview Pro | Elite Copilot</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="pro-theme">
+    <div class="app-layout">
+        <!-- Sidebar: History & Tools -->
+        <aside class="side-panel left glass">
+            <div class="panel-header">
+                <h2>Activity Log</h2>
+            </div>
+            <div id="history-list" class="log-container">
+                <div class="empty-log">System Ready. Awaiting input...</div>
+            </div>
+            <div class="panel-footer">
+                <div class="shortcut">ESC: Clear Chat</div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="workspace">
+            <header class="navbar glass">
+                <div class="brand">
+                    <div class="ai-orb"><span></span></div>
+                    <h1>Interview <span class="accent">Copilot Pro</span></h1>
+                </div>
+
+                <div class="nav-actions">
+                    <select id="device-select" class="pro-select">
+                        <option value="">🎤 Audio Input</option>
+                    </select>
+                    <div class="status-indicator" id="app-status">
+                        <span class="pulse-dot"></span>
+                        <span class="status-text">OFFLINE</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="dashboard-grid">
+                <!-- Answer Section -->
+                <div class="cell main-output glass">
+                    <div class="cell-header">
+                        <span class="label">LIVE SUGGESTION</span>
+                        <button class="icon-btn" id="copy-btn" title="Copy Answer">📋</button>
+                    </div>
+                    <div id="answer-chat" class="chat-viewport">
+                        <p class="initial-msg">Initiate audio detection to receive real-time tactical advice.</p>
+                        <div class="typing-indicator" id="typing-indicator">
+                            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transcription & Meta -->
+                <div class="cell transcription-card glass">
+                    <div class="cell-header">
+                        <span class="label">TRANSCRIPTION ENGINE</span>
+                    </div>
+                    <div id="transcription-box" class="live-text">
+                        "Detecting conversation..."
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Controls -->
+            <footer class="bottom-bar">
+                <button id="toggle-btn" class="power-btn">
+                    <span class="icon">⚡</span> ACTIVATE COPILOT
+                </button>
+                <div class="audio-feedback">
+                    <div class="visualizer-bars" id="visualizer">
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                    </div>
+                </div>
+            </footer>
+        </main>
+
+        <!-- Right Insights Panel -->
+        <aside class="side-panel right glass">
+            <div class="panel-header">
+                <h2>Pro Insights</h2>
+            </div>
+            <div class="insight-content">
+                <div class="insight-group">
+                    <label>Keywords to Hit</label>
+                    <div id="keyword-pills" class="pill-cloud">
+                        <span class="pill muted">Reliability</span>
+                        <span class="pill muted">Scaling</span>
+                    </div>
+                </div>
+                <div class="insight-group">
+                    <label>Talking Points</label>
+                    <ul id="talking-points" class="pro-list">
+                        <li>Focus on quantifiable results.</li>
+                        <li>Express enthusiasm for the role.</li>
+                    </ul>
+                </div>
+                <div class="insight-group highlight">
+                    <label>Strategic Follow-up</label>
+                    <div id="follow-up-box" class="strategy-box">
+                        Wait for question...
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+
+</html>

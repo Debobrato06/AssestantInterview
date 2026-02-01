@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Interview Pro | Universal Copilot</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #050508;
+            --panel-bg: rgba(13, 14, 22, 0.95);
+            --accent-blue: #00d2ff;
+            --accent-glow: rgba(0, 210, 255, 0.5);
+            --text-high: #ffffff;
+            --text-mid: #9494b8;
+            --text-low: #5c5c7a;
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --danger: #ff2e63;
+            --success: #08f7af;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: default;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-high);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            background: radial-gradient(circle at 50% 50%, rgba(20, 20, 60, 0.4) 0%, #050508 100%), url('/static/hero_bg.png');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .app-layout {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            padding: 0.75rem;
+            gap: 0.75rem;
+        }
+
+        .glass {
+            background: var(--panel-bg);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Left Side: Activity Log */
+        .side-panel {
+            width: 300px;
+            flex-shrink: 0;
+        }
+
+        .panel-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .panel-header h2 {
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .log-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .history-item {
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border-left: 2px solid var(--text-low);
+        }
+
+        /* Middle: Main Workspace */
+        .workspace {
+            flex: 1.2;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        /* Video Container (Meet Style) */
+        .video-container {
+            flex: 1.5;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid var(--glass-border);
+        }
+
+        #captured-video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .video-overlay-text {
+            position: absolute;
+            bottom: 1.5rem;
+            left: 1.5rem;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #fff;
+            border: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Transcription Pane */
+        .transcription-pane {
+            height: 120px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 1rem;
+            font-size: 1.1rem;
+            color: #fff;
+            font-style: italic;
+            overflow-y: auto;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        /* Right Side: AI Suggestions */
+        .suggestion-panel {
+            flex: 0.8;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-viewport {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .bubble {
+            padding: 1rem;
+            border-radius: 14px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .bubble.ai {
+            background: rgba(0, 210, 255, 0.1);
+            border: 1px solid rgba(0, 210, 255, 0.2);
+            align-self: flex-start;
+        }
+
+        .bubble.ai.star {
+            border-left: 3px solid #ff00ff;
+            background: rgba(255, 0, 255, 0.05);
+            margin-top: -0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .bubble.user-q {
+            background: rgba(255, 255, 255, 0.05);
+            align-self: flex-end;
+            color: var(--text-mid);
+            border: 1px solid var(--glass-border);
+        }
+
+        .bubble.user-q.interviewer {
+            border-right: 3px solid var(--accent-blue);
+            background: rgba(0, 210, 255, 0.05);
+        }
+
+        .insights-section {
+            height: 300px;
+            padding: 1rem;
+            overflow-y: auto;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .insight-group label {
+            display: block;
+            font-size: 0.65rem;
+            color: var(--accent-blue);
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(0, 210, 255, 0.1);
+            border: 1px solid rgba(0, 210, 255, 0.3);
+            border-radius: 12px;
+            font-size: 0.75rem;
+            color: var(--accent-blue);
+            margin: 0 4px 4px 0;
+        }
+
+        .insight-list li {
+            font-size: 0.85rem;
+            color: var(--text-mid);
+            margin-bottom: 0.5rem;
+            list-style: none;
+            padding-left: 1rem;
+            position: relative;
+        }
+
+        .insight-list li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: var(--accent-blue);
+        }
+
+        /* Universal Controls */
+        .controls-bar {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex-shrink: 0;
+        }
+
+        .btn-circle {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: 0.2s;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .btn-circle:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .btn-circle.active {
+            background: var(--danger);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 46, 99, 0.4);
+        }
+
+        .btn-capture {
+            background: var(--accent-blue);
+            color: #000;
+            font-weight: 700;
+            width: auto;
+            border-radius: 28px;
+            padding: 0 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .typing-box {
+            display: none;
+            gap: 4px;
+            padding: 0.5rem;
+        }
+
+        .t-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1);
+            }
+        }
+
+        .manual-input-box {
+            display: flex;
+            padding: 0.75rem;
+            gap: 0.5rem;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .manual-fld {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            outline: none;
+            font-size: 0.9rem;
+        }
+
+        .modern-select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-high);
+            border: 1px solid var(--glass-border);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2300d2ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .modern-select:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 10px rgba(0, 210, 255, 0.1);
+        }
+
+        .modern-select:focus {
+            border-color: var(--accent-blue);
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .modern-select option {
+            background: #1a1b26;
+            color: #fff;
+            padding: 10px;
+        }
+
+        .settings-label {
+            font-size: 0.65rem;
+            color: var(--accent-blue);
+            display: block;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <!-- Activity Log -->
+        <aside class="side-panel glass">
+            <div class="panel-header">
+                <h2>Settings</h2>
+            </div>
+            <div style="padding: 1.25rem; border-bottom: 1px solid var(--glass-border);">
+                <label class="settings-label">AI PROVIDER</label>
+                <select id="ai-provider" class="modern-select">
+                    <option value="openai">OpenAI (GPT-4o)</option>
+                    <option value="gemini">Google Gemini (FREE)</option>
+                    <option value="ollama">Local LLM (Ollama - FREE)</option>
+                </select>
+
+                <label class="settings-label">API KEY</label>
+                <div style="display:flex; gap:8px; margin-bottom: 15px;">
+                    <input type="password" id="api-key-fld" class="manual-fld"
+                        style="background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:8px; border: 1px solid var(--glass-border); flex: 1;"
+                        placeholder="Paste key here...">
+                    <button onclick="updateSettings()"
+                        style="background:var(--accent-blue); border:none; border-radius:8px; padding:0 15px; cursor:pointer; color:#000; font-weight:700; transition: 0.2s;"
+                        onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">SET</button>
+                </div>
+
+                <label class="settings-label">INTERVIEWER SOURCE</label>
+                <select id="device-select" onchange="updateSettings()" class="modern-select">
+                    <option value="">Auto-Detect</option>
+                </select>
+                <p style="font-size:0.6rem; color:var(--text-low); margin-top:5px;">Pick "Stereo Mix" or "Mixed Capture"
+                    to hear the interviewer.</p>
+            </div>
+
+            <div class="panel-header">
+                <h2>Conversation Log</h2><button
+                    style="background:none; border:none; color:var(--text-low); cursor:pointer;"
+                    onclick="clearAll()">🗑️</button>
+            </div>
+            <div id="history-list" class="log-container"></div>
+        </aside>
+
+        <!-- Workspace (Meet Style) -->
+        <main class="workspace">
+            <div class="video-container glass">
+                <video id="captured-video" autoplay playsinline muted></video>
+                <div class="video-overlay-text">
+                    <span class="pulse-dot" id="rec-dot"
+                        style="width:10px; height:10px; background:#555; border-radius:50%;"></span>
+                    <span id="video-label">No Feed Connected</span>
+                </div>
+            </div>
+
+            <div class="cell glass" style="flex: 0.5;">
+                <div class="cell-header"><span class="label">LIVE ENGINE TRANSCRIPTION</span></div>
+                <div id="transcription-box" class="transcription-pane">Select a tab/window to begin capturing meeting
+                    audio...</div>
+            </div>
+
+            <footer class="controls-bar">
+                <button id="capture-btn" class="btn-circle btn-capture">🌐 CAPTURE TAB / WINDOW</button>
+                <button id="mic-btn" class="btn-circle" title="Manual Mic Check">🎤</button>
+                <button id="clear-btn" class="btn-circle" title="Clear Suggestions" onclick="clearUI()">🧹</button>
+                <div id="capture-status" style="font-size: 0.75rem; color: var(--text-low); font-weight: 700;">OFFLINE
+                </div>
+            </footer>
+        </main>
+
+        <!-- AI Suggestions Panel -->
+        <aside class="suggestion-panel">
+            <div class="chat-container glass">
+                <div class="panel-header">
+                    <h2>Elite AI Suggestions</h2>
+                </div>
+                <div id="answer-chat" class="chat-viewport">
+                    <div class="typing-box" id="typing-box"><span class="t-dot"></span><span class="t-dot"></span><span
+                            class="t-dot"></span></div>
+                </div>
+                <div class="manual-input-box">
+                    <input type="text" id="manual-msg" class="manual-fld" placeholder="Type a message manually...">
+                    <button style="background:none; border:none; color:var(--accent-blue); cursor:pointer;"
+                        onclick="sendManualText()">📤</button>
+                </div>
+            </div>
+
+            <div class="insights-section glass">
+                <div class="insight-group">
+                    <label>Keywords to Hit</label>
+                    <div id="keyword-cloud"></div>
+                </div>
+                <div class="insight-group" style="margin-top:1rem;">
+                    <label>Talking Points</label>
+                    <ul id="points-list" class="insight-list"></ul>
+                </div>
+                <div class="insight-group" style="margin-top:1rem;">
+                    <label>Follow-up</label>
+                    <div id="follow-up-box" class="insight-list"
+                        style="color:var(--danger); font-size:0.9rem; font-weight:600;">...</div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        const video = document.getElementById('captured-video');
+        const captureBtn = document.getElementById('capture-btn');
+        const micBtn = document.getElementById('mic-btn');
+        const transcriptionBox = document.getElementById('transcription-box');
+        const answerChat = document.getElementById('answer-chat');
+        const typingBox = document.getElementById('typing-box');
+        const historyList = document.getElementById('history-list');
+        const keywordCloud = document.getElementById('keyword-cloud');
+        const pointsList = document.getElementById('points-list');
+        const followUpBox = document.getElementById('follow-up-box');
+        const recDot = document.getElementById('rec-dot');
+        const videoLabel = document.getElementById('video-label');
+        const capStatus = document.getElementById('capture-status');
+        const manualInput = document.getElementById('manual-msg');
+
+        let ws, recognition, isCapturing = false, isEngineActive = false;
+
+        async function toggleBackendEngine() {
+            try {
+                const res = await fetch('/toggle-listening', { method: 'POST' });
+                const data = await res.json();
+                isEngineActive = data.status === 'listening';
+
+                if (isEngineActive) {
+                    micBtn.classList.add('active');
+                    micBtn.style.background = 'var(--success)';
+                    engineStatusUpdate("ENGINE: ACTIVE");
+                } else {
+                    micBtn.classList.remove('active');
+                    micBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+                    engineStatusUpdate("ENGINE: READY");
+                }
+            } catch (err) {
+                console.error("Engine Toggle Error:", err);
+            }
+        }
+
+        function engineStatusUpdate(txt) {
+            capStatus.innerText = txt;
+            if (txt.includes("ACTIVE")) capStatus.style.color = "var(--success)";
+            else if (txt.includes("USING")) capStatus.style.color = "var(--accent-blue)";
+            else capStatus.style.color = "var(--accent-blue)";
+        }
+
+        function connectWS() {
+            const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${proto}//${window.location.host}/ws`);
+            ws.onopen = () => { capStatus.innerText = 'CONNECTED'; capStatus.style.color = 'var(--accent-blue)'; };
+            ws.onclose = () => { capStatus.innerText = 'DISCONNECTED'; setTimeout(connectWS, 2000); };
+            ws.onmessage = (e) => {
+                const d = JSON.parse(e.data);
+                if (d.type === 'question') {
+                    const sourceTag = d.source === 'Interviewer' ? '🎙️ INTERVIEWER: ' : '👤 YOU: ';
+                    const color = d.source === 'Interviewer' ? 'var(--accent-blue)' : 'var(--text-mid)';
+
+                    // Update main transcription box with source differentiation
+                    transcriptionBox.innerHTML = `<div><span style="color:${color}; font-weight:bold;">${sourceTag}</span> ${d.content}</div>`;
+
+                    appendBubble(d.content, d.source === 'Interviewer' ? 'user-q interviewer' : 'user-q');
+                    logHistory(`[${d.source}] ${d.content}`);
+                } else if (d.type === 'answer') {
+                    typingBox.style.display = 'none';
+                    renderAIResult(d.content);
+                } else if (d.type === 'status') {
+                    if (d.content.includes('Thinking')) {
+                        typingBox.style.display = 'flex';
+                    } else {
+                        typingBox.style.display = 'none';
+                    }
+                    capStatus.innerText = d.content.toUpperCase();
+                }
+            };
+        }
+
+        let finalTranscript = '';
+
+        function initSpeech() {
+            if (!('webkitSpeechRecognition' in window)) {
+                alert("Speech recognition not supported in this browser. Please use Chrome.");
+                return;
+            }
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (ev) => {
+                let interimTranscript = '';
+                for (let i = ev.resultIndex; i < ev.results.length; ++i) {
+                    const transcript = ev.results[i][0].transcript;
+                    if (ev.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                        sendTranscription(transcript); // Send final segments to AI
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                // Show both in transcription box for feedback
+                transcriptionBox.innerHTML = `<span style="color:var(--text-mid)">${finalTranscript}</span><span style="color:var(--accent-blue)">${interimTranscript}</span>`;
+                transcriptionBox.scrollTop = transcriptionBox.scrollHeight;
+            };
+
+            recognition.onend = () => { if (isCapturing) recognition.start(); };
+            recognition.onerror = (err) => { console.error("Speech Recognition Error:", err.error); };
+        }
+
+        async function startCapture() {
+            try {
+                // Requesting screen share WITH system audio
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { cursor: "always" },
+                    audio: {
+                        echoCancellation: false, // Disable EC to capture system audio clearly
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+
+                // Check if audio track exists (user must check "Share system audio")
+                if (stream.getAudioTracks().length === 0) {
+                    alert("Warning: No audio track found. Make sure to check 'Share system audio' when selecting the tab/window.");
+                }
+
+                video.srcObject = stream;
+                isCapturing = true;
+
+                // We need to route the stream audio through an AudioContext to make it "hearable" by the speech recognizer 
+                // However, webkitSpeechRecognition usually listens to the default mic.
+                // To capture SYSTEM audio, we often need to use a virtual cable or ensure the browser is capturing the stream.
+                // In Chrome, webkitSpeechRecognition specifically might still default to mic.
+
+                recognition.start();
+
+                captureBtn.classList.add('active');
+                captureBtn.textContent = "🛑 STOP FEED";
+                recDot.style.background = 'var(--danger)';
+                recDot.style.boxShadow = '0 0 10px var(--danger)';
+                videoLabel.textContent = "LIVE: Meeting Captured";
+                capStatus.innerText = "CAPTURING AUDIO";
+                capStatus.style.color = "var(--success)";
+
+                stream.getVideoTracks()[0].onended = stopCapture;
+            } catch (err) {
+                console.error("Capture Error:", err);
+                alert("Failed to start capture: " + err.message);
+            }
+        }
+
+        function stopCapture() {
+            isCapturing = false;
+            recognition.stop();
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            captureBtn.classList.remove('active');
+            captureBtn.textContent = "🌐 CAPTURE TAB / WINDOW";
+            recDot.style.background = '#555';
+            recDot.style.boxShadow = 'none';
+            videoLabel.textContent = "No Feed Connected";
+            capStatus.innerText = "CONNECTED";
+            capStatus.style.color = 'var(--accent-blue)';
+            finalTranscript = '';
+        }
+
+        captureBtn.onclick = () => isCapturing ? stopCapture() : startCapture();
+        micBtn.onclick = toggleBackendEngine;
+
+        function renderAIResult(res) {
+            appendBubble(res.main_answer, 'ai');
+            if (res.star_expansion) appendBubble(res.star_expansion, 'ai star');
+
+            keywordCloud.innerHTML = '';
+            res.keywords?.forEach(k => {
+                const s = document.createElement('span'); s.className = 'pill'; s.textContent = k; keywordCloud.appendChild(s);
+            });
+
+            pointsList.innerHTML = '';
+            res.talking_points?.forEach(p => {
+                const li = document.createElement('li'); li.textContent = p; pointsList.appendChild(li);
+            });
+
+            followUpBox.textContent = res.interviewer_question || "Wait for signal...";
+            answerChat.scrollTop = answerChat.scrollHeight;
+        }
+
+        function appendBubble(t, c) {
+            const d = document.createElement('div'); d.className = `bubble ${c}`; d.textContent = t;
+            answerChat.insertBefore(d, typingBox);
+            answerChat.scrollTop = answerChat.scrollHeight;
+        }
+
+        function sendTranscription(txt) {
+            if (ws && ws.readyState === 1 && txt.trim().length > 5) {
+                ws.send(JSON.stringify({ type: 'transcription', content: txt }));
+            }
+        }
+
+        function sendManualText() {
+            const v = manualInput.value.trim();
+            if (v) {
+                appendBubble(v, 'user-q');
+                ws.send(JSON.stringify({ type: 'transcription', content: v }));
+                manualInput.value = '';
+            }
+        }
+
+
+        function logHistory(q) {
+            const d = document.createElement('div'); d.className = 'history-item';
+            d.innerHTML = `<span style="font-size:0.6rem; color:var(--text-low);">${new Date().toLocaleTimeString()}</span><div style="font-size:0.85rem; margin-top:3px; color:var(--text-mid);">${q}</div>`;
+            historyList.prepend(d);
+        }
+
+        function clearUI() { answerChat.querySelectorAll('.bubble').forEach(b => b.remove()); }
+        function clearAll() { clearUI(); historyList.innerHTML = ''; }
+
+        manualInput.onkeypress = (e) => { if (e.key === 'Enter') sendManualText(); };
+
+        async function loadDevices() {
+            try {
+                const res = await fetch('/devices');
+                const devices = await res.json();
+                const sel = document.getElementById('device-select');
+                devices.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.index;
+                    opt.textContent = d.name;
+                    sel.appendChild(opt);
+                });
+            } catch (e) { console.error("Load Devices Error:", e); }
+        }
+
+        async function updateSettings() {
+            const key = document.getElementById('api-key-fld').value;
+            const deviceIdx = document.getElementById('device-select').value;
+            const provider = document.getElementById('ai-provider').value;
+
+            try {
+                if (key) {
+                    const res = await fetch('/update-key', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key: key, provider: provider })
+                    });
+                    const d = await res.json();
+                    engineStatusUpdate(`USING ${provider.toUpperCase()}`);
+                }
+                if (deviceIdx !== "") {
+                    await fetch('/select-device', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ index: deviceIdx })
+                    });
+                }
+                engineStatusUpdate("SETTINGS UPDATED");
+                setTimeout(() => engineStatusUpdate(isEngineActive ? "ENGINE: ACTIVE" : "ENGINE: READY"), 2000);
+            } catch (e) { console.error("Update Settings Error:", e); }
+        }
+
+        connectWS();
+        initSpeech();
+        loadDevices();
+    </script>
+</body>
+
+</html>
