@@ -5,33 +5,33 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from google import genai
+import google.generativeai as genai_stable
 import ollama
 
 class ChatGPTAssistant:
     def __init__(self):
         self._init_openai(os.getenv("OPENAI_API_KEY"))
         self._init_gemini(os.getenv("GEMINI_API_KEY"))
-        self.provider = "openai" # default
+        self.provider = "gemini" # Set Gemini as default
         self.system_prompt = """
-        You are an Elite Real-Time Interview Copilot. You are listening to a live conversation between an Interviewer and a Candidate.
+        You are an Elite Real-Time Meeting & Interview Assistant. You are listening to a live conversation.
         
         Your Role:
         - Continuously analyze the conversation.
-        - If the Interviewer asks a question: Provide a perfect, high-impact answer for the Candidate.
-        - If the Candidate is speaking: Provide improvements, missing keywords, or corrections to their answer.
-        - If there is general discussion: Provide tactical talking points to help the Candidate stand out.
+        - If someone asks a question: Provide a perfect, high-impact answer for the user.
+        - If the user is speaking: Provide improvements, missing keywords, or corrections.
+        - If there is general discussion: Provide tactical talking points and key takeaways.
         - Keep responses concise, professional, and strategic.
         
-        Input Format: Context from either 'Interviewer' or 'Candidate'.
+        Input Format: Context from either 'Interviewer/Host' or 'Candidate/User'.
 
         Output JSON Format:
         {
             "main_answer": "Direct answer or strategic advice (2-3 sentences max).",
-            "star_expansion": "STAR details or technical deep-dive if needed.",
-            "talking_points": ["Ongoing tip 1", "Ongoing tip 2"],
-            "keywords": ["Required Skill", "Industry Term"],
-            "interviewer_question": "Anticipated next question or a clever follow-up the candidate should ask."
+            "star_expansion": "Detailed explanation or technical deep-dive if needed.",
+            "talking_points": ["Ongoing tip 1", "Key takeaway 1"],
+            "keywords": ["Required Skill", "Industry Term", "Key Concept"],
+            "interviewer_question": "Anticipated next question or a clever follow-up the user should ask."
         }
         """
     def _init_openai(self, api_key):
@@ -39,9 +39,42 @@ class ChatGPTAssistant:
 
     def _init_gemini(self, api_key):
         if api_key and "your_gemini_api_key" not in api_key:
-            self.gemini_client = genai.Client(api_key=api_key)
+            try:
+                genai_stable.configure(api_key=api_key)
+                
+                # Auto-detect available models
+                available_models = [m.name for m in genai_stable.list_models() if 'generateContent' in m.supported_generation_methods]
+                print(f"Available Gemini Models: {available_models}")
+                
+                # Priority list
+                priority = [
+                    'models/gemini-1.5-flash',
+                    'models/gemini-1.5-flash-latest',
+                    'models/gemini-2.0-flash-exp',
+                    'models/gemini-1.0-pro',
+                    'models/gemini-pro'
+                ]
+                
+                selected_model = None
+                for p in priority:
+                    if p in available_models:
+                        selected_model = p
+                        break
+                
+                if not selected_model and available_models:
+                    selected_model = available_models[0]
+                
+                if selected_model:
+                    print(f"Selected Gemini Model: {selected_model}")
+                    self.gemini_model = genai_stable.GenerativeModel(selected_model)
+                else:
+                    print("No suitable Gemini model found!")
+                    self.gemini_model = None
+            except Exception as e:
+                print(f"Gemini Init Error: {e}")
+                self.gemini_model = None
         else:
-            self.gemini_client = None
+            self.gemini_model = None
 
     def update_key(self, new_key, provider="openai"):
         if provider == "openai":
@@ -54,7 +87,7 @@ class ChatGPTAssistant:
             self.provider = "ollama"
 
     def get_answer(self, question, source="Interviewer"):
-        if self.provider == "gemini" and self.gemini_client:
+        if self.provider == "gemini" and self.gemini_model:
             return self._get_gemini_answer(question, source)
         elif self.provider == "ollama":
             return self._get_ollama_answer(question, source)
@@ -79,14 +112,12 @@ class ChatGPTAssistant:
 
     def _get_gemini_answer(self, question, source):
         try:
-            print(f"Querying Gemini 2.0 ({source})...")
-            # Using the newest model gemini-2.0-flash-preview
-            response = self.gemini_client.models.generate_content(
-                model='gemini-2.0-flash-preview',
-                contents=f"{self.system_prompt}\n\nSource: {source}\nContent: {question}",
-                config={
-                    'response_mime_type': 'application/json',
-                }
+            print(f"Querying Gemini 1.5 Stable ({source})...")
+            response = self.gemini_model.generate_content(
+                f"{self.system_prompt}\n\nSource: {source}\nContent: {question}",
+                generation_config=genai_stable.types.GenerationConfig(
+                    response_mime_type="application/json",
+                )
             )
             return json.loads(response.text)
         except Exception as e:
