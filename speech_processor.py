@@ -19,17 +19,16 @@ class SpeechProcessor:
     def _find_loopback_device(self):
         try:
             devices = sd.query_devices()
-            # Try to find WASAPI Loopback first
-            for i, d in enumerate(devices):
-                if d['max_input_channels'] > 0 and "loopback" in d['name'].lower():
-                    print(f"!!! Found WASAPI Loopback: {d['name']} at index {i}")
-                    return i
+            keywords = ["loopback", "stereo mix", "what u hear", "wave out", "mixed capture"]
             
-            # Fallback to Stereo Mix
-            for i, d in enumerate(devices):
-                if d['max_input_channels'] > 0 and "stereo mix" in d['name'].lower():
-                    print(f"!!! Found Stereo Mix: {d['name']} at index {i}")
-                    return i
+            # Try to find a match among keywords
+            for kw in keywords:
+                for i, d in enumerate(devices):
+                    if d['max_input_channels'] > 0 and kw in d['name'].lower():
+                        print(f"!!! Auto-Detected System Audio Source: {d['name']} at index {i}")
+                        return i
+            
+            print("??? No system audio source (Stereo Mix/Loopback) found automatically.")
         except Exception as e:
             print(f"Error finding loopback device: {e}")
         return None
@@ -93,6 +92,24 @@ class SpeechProcessor:
             # If PyAudio/Microphone fails, we'd need a sounddevice callback implementation
             # For now, let's stick to the Microphone approach but make it more robust.
             pass
+
+    def transcribe_audio_chunk(self, audio_bytes):
+        """Transcribes raw audio bytes received from the frontend."""
+        try:
+            # The frontend sends a WebM/Opus or WAV blob. 
+            # speech_recognition needs a file-like object.
+            # We'll use io.BytesIO to wrap it.
+            with io.BytesIO(audio_bytes) as f:
+                with sr.AudioFile(f) as source:
+                    audio = self.recognizer.record(source)
+                    text = self.recognizer.recognize_google(audio)
+                    if text:
+                        print(f"Direct Capture Detected: {text}")
+                        return text
+        except Exception as e:
+            # Often fails if the chunk is too small or silence
+            pass
+        return None
 
     def get_latest_text(self):
         try:

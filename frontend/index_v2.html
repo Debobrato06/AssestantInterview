@@ -77,11 +77,11 @@
         }
 
         .panel-header h2 {
-            font-size: 0.7rem;
+            font-size: 0.85rem;
             letter-spacing: 2px;
             color: var(--accent-blue);
             text-transform: uppercase;
-            font-weight: 700;
+            font-weight: 800;
         }
 
         .log-container {
@@ -151,10 +151,11 @@
 
         /* Right Side: AI Suggestions */
         .suggestion-panel {
-            flex: 0.8;
+            flex: 1.1;
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
+            min-width: 360px;
         }
 
         .chat-container {
@@ -167,10 +168,10 @@
         .chat-viewport {
             flex: 1;
             overflow-y: auto;
-            padding: 1rem;
+            padding: 1.25rem;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 1.15rem;
         }
 
         .bubble {
@@ -219,20 +220,21 @@
         }
 
         .insights-section {
-            height: 300px;
-            padding: 1rem;
+            height: 260px;
+            padding: 1.25rem;
             overflow-y: auto;
-            border-top: 1px solid var(--glass-border);
+            background: rgba(13, 14, 22, 0.4);
         }
 
         .insight-group label {
             display: block;
-            font-size: 0.65rem;
+            font-size: 0.7rem;
             color: var(--accent-blue);
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.85rem;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 700;
+            letter-spacing: 1.5px;
+            font-weight: 800;
+            opacity: 0.9;
         }
 
         .pill {
@@ -337,9 +339,10 @@
 
         .manual-input-box {
             display: flex;
-            padding: 0.75rem;
-            gap: 0.5rem;
+            padding: 1rem;
+            gap: 0.75rem;
             border-top: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.2);
         }
 
         .manual-fld {
@@ -453,8 +456,8 @@
 
             <div class="cell glass" style="flex: 0.5;">
                 <div class="cell-header"><span class="label">LIVE ENGINE TRANSCRIPTION</span></div>
-                <div id="transcription-box" class="transcription-pane">Select a tab/window to begin capturing meeting
-                    audio...</div>
+                <div id="transcription-box" class="transcription-pane">Awaiting Interviewer/Host audio via Backend
+                    Engine...</div>
             </div>
 
             <footer class="controls-bar">
@@ -518,6 +521,7 @@
         const manualInput = document.getElementById('manual-msg');
 
         let ws, recognition, isCapturing = false, isEngineActive = false;
+        let mediaRecorder;
 
         async function toggleBackendEngine() {
             try {
@@ -579,6 +583,8 @@
         let finalTranscript = '';
 
         function initSpeech() {
+            // Browser-side speech recognition disabled to focus on Interviewer/System audio via Backend
+            /*
             if (!('webkitSpeechRecognition' in window)) {
                 alert("Speech recognition not supported in this browser. Please use Chrome.");
                 return;
@@ -606,6 +612,8 @@
 
             recognition.onend = () => { if (isCapturing) recognition.start(); };
             recognition.onerror = (err) => { console.error("Speech Recognition Error:", err.error); };
+            */
+            console.log("Browser recognition idle. Using Backend Engine for Interviewer capture.");
         }
 
         async function startCapture() {
@@ -614,34 +622,41 @@
                 const stream = await navigator.mediaDevices.getDisplayMedia({
                     video: { cursor: "always" },
                     audio: {
-                        echoCancellation: false, // Disable EC to capture system audio clearly
+                        echoCancellation: false,
                         noiseSuppression: true,
                         autoGainControl: true
                     }
                 });
 
-                // Check if audio track exists (user must check "Share system audio")
                 if (stream.getAudioTracks().length === 0) {
-                    alert("Warning: No audio track found. Make sure to check 'Share system audio' when selecting the tab/window.");
+                    alert("CRITICAL: No system audio track found! \n\nTo hear the interviewer, you MUST:\n1. Select 'Google Meet' tab/window.\n2. Check 'Share system audio' checkbox.");
+                    stopCapture();
+                    return;
                 }
 
                 video.srcObject = stream;
                 isCapturing = true;
 
-                // We need to route the stream audio through an AudioContext to make it "hearable" by the speech recognizer 
-                // However, webkitSpeechRecognition usually listens to the default mic.
-                // To capture SYSTEM audio, we often need to use a virtual cable or ensure the browser is capturing the stream.
-                // In Chrome, webkitSpeechRecognition specifically might still default to mic.
+                // Setup MediaRecorder for the system audio stream
+                const audioStream = new MediaStream(stream.getAudioTracks());
+                mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
 
-                recognition.start();
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0 && ws && ws.readyState === 1) {
+                        ws.send(e.data); // Sending raw binary audio chunk to backend (Whisper)
+                        console.log("Sent system audio chunk...");
+                    }
+                };
+
+                // Capture in 4-second slices for reliable transcription
+                mediaRecorder.start(4000);
 
                 captureBtn.classList.add('active');
                 captureBtn.textContent = "🛑 STOP FEED";
                 recDot.style.background = 'var(--danger)';
                 recDot.style.boxShadow = '0 0 10px var(--danger)';
-                videoLabel.textContent = "LIVE: Meeting Captured";
-                capStatus.innerText = "CAPTURING AUDIO";
-                capStatus.style.color = "var(--success)";
+                videoLabel.textContent = "LIVE: Host Audio Capture Active";
+                transcriptionBox.innerHTML = "<div style='color:var(--success)'><b>Bridging Host Audio...</b><br>Capturing directly from Google Meet. Ensure host is speaking.</div>";
 
                 stream.getVideoTracks()[0].onended = stopCapture;
             } catch (err) {
@@ -652,7 +667,7 @@
 
         function stopCapture() {
             isCapturing = false;
-            recognition.stop();
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
             if (video.srcObject) {
                 video.srcObject.getTracks().forEach(track => track.stop());
                 video.srcObject = null;

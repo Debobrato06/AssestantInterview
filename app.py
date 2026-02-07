@@ -91,26 +91,37 @@ async def websocket_endpoint(websocket: WebSocket):
     
     try:
         while True:
-            # 1. Check for new text from local speech processor (Interviewer side)
-            backend_text = processor.get_latest_text()
-            if backend_text:
-                print(f"Backend detected: {backend_text}")
-                asyncio.create_task(process_text_task(websocket, backend_text, "Interviewer"))
-            
-            # 2. Check for incoming messages from the frontend (Candidate side)
+            # 1. Check for incoming messages
             try:
-                msg = await asyncio.wait_for(websocket.receive_json(), timeout=0.01)
-                if msg.get("type") == "transcription":
-                    frontend_text = msg.get("content")
-                    print(f"Frontend detected: {frontend_text}")
-                    asyncio.create_task(process_text_task(websocket, frontend_text, "Candidate"))
+                # Wait for message (either JSON or Binary)
+                msg_raw = await asyncio.wait_for(websocket.receive(), timeout=0.05)
+                
+                if "text" in msg_raw:
+                    msg = json.loads(msg_raw["text"])
+                    if msg.get("type") == "transcription":
+                        frontend_text = msg.get("content")
+                        print(f"Frontend Text: {frontend_text}")
+                        asyncio.create_task(process_text_task(websocket, frontend_text, "Candidate"))
+                
+                elif "bytes" in msg_raw:
+                    # Received raw audio chunk from interviewer feed (System Audio)
+                    audio_data = msg_raw["bytes"]
+                    print("Processing System Audio Chunk (Interviewer)...")
+                    # Offload transcription to avoid blocking the loop
+                    loop = asyncio.get_event_loop()
+                    text = await loop.run_in_executor(None, ai.transcribe_audio, audio_data)
+                    if text:
+                        asyncio.create_task(process_text_task(websocket, text, "Interviewer"))
+
             except asyncio.TimeoutError:
                 pass
-            except Exception as e:
-                # This often happens if WS is closed during wait_for
-                break
+            
+            # 2. Check for backend-only detection (legacy/fallback)
+            backend_text = processor.get_latest_text()
+            if backend_text:
+                asyncio.create_task(process_text_task(websocket, backend_text, "Interviewer"))
 
-            await asyncio.sleep(0.05) 
+            await asyncio.sleep(0.01) 
             
     except WebSocketDisconnect:
         print("Websocket disconnected")

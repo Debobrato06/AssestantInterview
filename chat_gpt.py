@@ -139,3 +139,26 @@ class ChatGPTAssistant:
         except Exception as e:
             print(f"!!! Ollama Error: {e}")
             return {"main_answer": "Local LLM Error. Ensure Ollama is running and Llama3 is pulled (`ollama pull llama3`).", "talking_points": [], "keywords": [], "interviewer_question": ""}
+
+    def transcribe_audio(self, audio_bytes):
+        """Transcribes audio bits using OpenAI Whisper API for maximum accuracy."""
+        try:
+            import tempfile
+            # Whisper supports webm, mp3, wav, etc.
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
+                tmp.write(audio_bytes)
+                tmp_path = tmp.name
+            
+            try:
+                with open(tmp_path, "rb") as audio_file:
+                    transcript = self.openai_client.audio.transcriptions.create(
+                        model="whisper-1", 
+                        file=audio_file
+                    )
+                return transcript.text
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+        except Exception as e:
+            print(f"Whisper Error: {e}")
+            return None
