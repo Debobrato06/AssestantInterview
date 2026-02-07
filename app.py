@@ -79,6 +79,15 @@ async def process_text_task(websocket: WebSocket, text: str, source: str):
         "content": "Listening..."
     })
 
+async def run_transcription_task(websocket: WebSocket, audio_data: bytes):
+    loop = asyncio.get_event_loop()
+    text = await loop.run_in_executor(None, ai.transcribe_audio, audio_data)
+    if text and len(text.strip()) > 5: 
+        await process_text_task(websocket, text, "Interviewer")
+    else:
+        # Send a silent signal to frontend that processing finished with no text
+        await safe_send(websocket, {"type": "status", "content": "Listening... (No speech detected)"})
+
 @app.get("/")
 async def get():
     with open("frontend/index_v2.html", "r", encoding="utf-8") as f:
@@ -88,7 +97,9 @@ async def get():
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     print("Websocket connected")
-    
+    audio_buffer = bytearray()
+    header_chunk = None
+
     try:
         while True:
             # 1. Check for incoming messages
@@ -104,14 +115,27 @@ async def websocket_endpoint(websocket: WebSocket):
                         asyncio.create_task(process_text_task(websocket, frontend_text, "Candidate"))
                 
                 elif "bytes" in msg_raw:
-                    # Received raw audio chunk from interviewer feed (System Audio)
-                    audio_data = msg_raw["bytes"]
-                    print("Processing System Audio Chunk (Interviewer)...")
-                    # Offload transcription to avoid blocking the loop
-                    loop = asyncio.get_event_loop()
-                    text = await loop.run_in_executor(None, ai.transcribe_audio, audio_data)
-                    if text:
-                        asyncio.create_task(process_text_task(websocket, text, "Interviewer"))
+                    # Received raw audio chunk
+                    chunk = msg_raw["bytes"]
+                    
+                    if header_chunk is None:
+                        header_chunk = chunk
+                        print("Captured Audio Header")
+                        # First chunk is special, don't process it yet, just store as header
+                        continue 
+                    
+                    audio_buffer.extend(chunk)
+                    
+                    # Accumulate a decent slice for transcription (~2-3 seconds)
+                    if len(audio_buffer) > 24000: 
+                        # Combine header + current buffer to make a valid standalone file
+                        to_process = header_chunk + bytes(audio_buffer)
+                        audio_buffer = bytearray() # Clear buffer for next segment
+                        
+                        print(f"Processing Valid Audio Segment ({len(to_process)} bytes)...")
+                        
+                        # Process in background task
+                        asyncio.create_task(run_transcription_task(websocket, to_process))
 
             except asyncio.TimeoutError:
                 pass

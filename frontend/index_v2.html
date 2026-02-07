@@ -561,8 +561,13 @@
                     const sourceTag = d.source === 'Interviewer' ? '🎙️ INTERVIEWER: ' : '👤 YOU: ';
                     const color = d.source === 'Interviewer' ? 'var(--accent-blue)' : 'var(--text-mid)';
 
-                    // Update main transcription box with source differentiation
-                    transcriptionBox.innerHTML = `<div><span style="color:${color}; font-weight:bold;">${sourceTag}</span> ${d.content}</div>`;
+                    // Update main transcription box with source differentiation (Append mode)
+                    const msgDiv = document.createElement('div');
+                    msgDiv.innerHTML = `<span style="color:${color}; font-weight:bold;">${sourceTag}</span> ${d.content}`;
+                    transcriptionBox.appendChild(msgDiv);
+
+                    // Keep the box focused on the latest message
+                    transcriptionBox.scrollTop = transcriptionBox.scrollHeight;
 
                     appendBubble(d.content, d.source === 'Interviewer' ? 'user-q interviewer' : 'user-q');
                     logHistory(`[${d.source}] ${d.content}`);
@@ -620,11 +625,15 @@
             try {
                 // Requesting screen share WITH system audio
                 const stream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { cursor: "always" },
+                    video: {
+                        displaySurface: "browser",
+                        cursor: "always"
+                    },
                     audio: {
                         echoCancellation: false,
-                        noiseSuppression: true,
-                        autoGainControl: true
+                        noiseSuppression: false,
+                        autoGainControl: true,
+                        suppressLocalAudioPlayback: false
                     }
                 });
 
@@ -639,7 +648,18 @@
 
                 // Setup MediaRecorder for the system audio stream
                 const audioStream = new MediaStream(stream.getAudioTracks());
-                mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
+
+                // Determine best mimeType
+                const types = [
+                    'audio/webm;codecs=opus',
+                    'audio/webm',
+                    'audio/ogg;codecs=opus',
+                    'audio/wav'
+                ];
+                const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+                console.log("Using MIME Type:", mimeType);
+
+                mediaRecorder = new MediaRecorder(audioStream, { mimeType });
 
                 mediaRecorder.ondataavailable = (e) => {
                     if (e.data.size > 0 && ws && ws.readyState === 1) {
@@ -648,8 +668,8 @@
                     }
                 };
 
-                // Capture in 4-second slices for reliable transcription
-                mediaRecorder.start(4000);
+                // Capture in 1-second slices for near real-time transcription
+                mediaRecorder.start(1000);
 
                 captureBtn.classList.add('active');
                 captureBtn.textContent = "🛑 STOP FEED";
@@ -657,6 +677,36 @@
                 recDot.style.boxShadow = '0 0 10px var(--danger)';
                 videoLabel.textContent = "LIVE: Host Audio Capture Active";
                 transcriptionBox.innerHTML = "<div style='color:var(--success)'><b>Bridging Host Audio...</b><br>Capturing directly from Google Meet. Ensure host is speaking.</div>";
+
+                // Visualizer Setup
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(audioStream);
+                const analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                source.connect(analyser);
+
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+
+                function drawVisualizer() {
+                    if (!isCapturing) return;
+                    requestAnimationFrame(drawVisualizer);
+                    analyser.getByteFrequencyData(dataArray);
+
+                    let sum = 0;
+                    for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+                    let average = sum / bufferLength;
+
+                    // Simple feedback: pulsate the rec-dot based on volume
+                    const scale = 1 + (average / 128);
+                    recDot.style.transform = `scale(${scale})`;
+                    if (average > 10) {
+                        recDot.style.background = 'var(--success)';
+                    } else {
+                        recDot.style.background = 'var(--danger)';
+                    }
+                }
+                drawVisualizer();
 
                 stream.getVideoTracks()[0].onended = stopCapture;
             } catch (err) {
